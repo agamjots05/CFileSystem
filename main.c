@@ -19,7 +19,7 @@ int initData(){
     // This will actually stretch our file to fit the 10MB size we set
     ftruncate(fileno(filePointer), DISK_SIZE);
 
-    //Now we need to add the superblock at the front of this file
+    // Now we need to add the superblock at the front of this file
     SuperBlock sb;
     sb.totalBlocks = DISK_SIZE / BLOCK_SIZE;
     sb.iNodeCount = NUM_INODES;
@@ -40,39 +40,74 @@ int initData(){
         return -1;
     }
 
-    printf("Written superblock to block 0 \n");
     fclose(filePointer);
 
     return 1;
 }
 
+void promptUser(char title[]){
+    printf("%s\n\n", title);
+    printf("> Enter file name: ");
+}
+
 int main(){
     int choice;
+    char fileName[100];
     
-    initData();
+    if (initData() == -1) {
+        return 1;
+    }
+
+    printf("\n=====================================\n");
+    printf("      C FILE SYSTEM INTERFACE\n");
+    printf("=====================================\n\n");
     
     while(1){
-        printf("Welcome to the C File System. Choose a Number Below \n");
-        printf("1 --> Create a File \n");
-        printf("2 --> Search for a File \n");
-        printf("3 --> Open a File \n");
+        printf("   1. Create a File \n");
+        printf("   2. Search for a File \n");
+        printf("   3. Open a File \n");
+        printf("   4. Exit\n\n");
+
+        printf("> Enter choice: ");
 
 
         // Wait for user to input a number
-        scanf("%d", &choice);
+        if (scanf("%d", &choice) != 1 || choice < 1 || choice > 4) {
+            while (getchar() != '\n');
+            printf("\nInvalid input. Please enter a number between 1-4.\n");
+            continue;
+        }
+
+        printf("\n-------------------------------------\n");
+
         switch (choice) {
             case 1:
-                printf("Enter file name you want to enter");
+                promptUser("Create File");
+                printf("\n");
+                printf("\n-------------------------------------\n");
+
+                break;
                 //TODO: Prob call a function to do this 
 
             case 2:
-                printf("Enter file name you want to search for");
+                promptUser("Search File");
+                printf("\n");
+                printf("\n-------------------------------------\n");
+
+                break;
                 //TODO: Prob call a function to do this 
 
             case 3:
-                printf("Enter the file you want to open");
+                promptUser("Open File");
+                printf("\n");
+                printf("\n-------------------------------------\n");
+
+                break;
                 //TODO: Prob call a function to do this 
                 //This method will most likely also call the 'close file' method. Since after the user opens the file and makes some changes, they would need to close it before moving on
+            case 4:
+                printf("Exiting...\n\n\n");
+                return 0;
         }
     }
 
