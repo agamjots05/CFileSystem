@@ -74,9 +74,16 @@ void printLine() {
 }
 
 
+static void flushLine(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+    }
+}
+
 int main() {
     int choice;
     char fileName[100];
+    char writeBuf[512];
 
     if (initSuperBlock() == -1) {
         return 1;
@@ -124,6 +131,13 @@ int main() {
 
             case 3:
                 promptUser("Open File");
+                scanf("%31s", fileName);
+                flushLine();
+                printf("> Text to store (max %d chars, one line):\n> ", BLOCK_SIZE);
+                if (fgets(writeBuf, sizeof writeBuf, stdin) == NULL) {
+                    writeBuf[0] = '\0';
+                }
+                writeToFile(fileName, writeBuf, strlen(writeBuf));
                 printLine();
 
                 break;

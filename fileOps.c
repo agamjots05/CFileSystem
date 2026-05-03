@@ -24,6 +24,10 @@ int findFile(const char *name, FILE *fp) {
 }
 int createFile(const char *name){
     FILE *fp = fopen("virtualDisk.bin", "rb+");
+    if (fp == NULL) {
+        printf("Error opening virtual disk in createFile.\n");
+        return -1;
+    }
 
     // 0. First get super block data
     SuperBlock sb;
@@ -71,6 +75,7 @@ int createFile(const char *name){
 
     //4. Fill in props of INode
     strncpy(temp.name, name, 31);
+    temp.name[31] = '\0';
     temp.isUsed = 1;
     temp.size = 0;
 
@@ -107,4 +112,59 @@ void searchFile(const char *name){
     }
     printf("File found at inode table index: %d\n", inodeIndex);
     fclose(fp);
+}
+
+int writeToFile(const char *name, const char *data, size_t len) {
+    FILE *fp = fopen("virtualDisk.bin", "rb+");
+    if (fp == NULL) {
+        printf("Error opening virtual disk\n");
+        return -1;
+    }
+
+    int idx = findFile(name, fp);
+    if (idx < 0) {
+        printf("File not found\n");
+        fclose(fp);
+        return -1;
+    }
+
+    INode in;
+    if (fseek(fp, BLOCK_SIZE + idx * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fread(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error reading inode\n");
+        fclose(fp);
+        return -1;
+    }
+
+    int block = in.dataBlocksUsed[0];
+    if (block == 0) {
+        printf("File has no data block assigned\n");
+        fclose(fp);
+        return -1;
+    }
+
+    size_t n = len;
+    if (n > (size_t)BLOCK_SIZE) {
+        printf("Only first %d bytes are stored\n", BLOCK_SIZE);
+        n = (size_t)BLOCK_SIZE;
+    }
+
+    long off = (long)block * BLOCK_SIZE;
+    if (fseek(fp, off, SEEK_SET) != 0 || fwrite(data, 1, n, fp) != n) {
+        printf("Error writing file data\n");
+        fclose(fp);
+        return -1;
+    }
+
+    in.size = (int)n;
+    if (fseek(fp, BLOCK_SIZE + idx * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fwrite(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error saving inode\n");
+        fclose(fp);
+        return -1;
+    }
+
+    printf("Wrote %zu byte(s) to \"%s\"\n", n, name);
+    fclose(fp);
+    return 0;
 }
