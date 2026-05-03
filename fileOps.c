@@ -17,14 +17,18 @@ int findFile(const char *name, FILE *fp) {
             return -1;
         };
         if (temp.isUsed && (strcmp(name, temp.name) == 0)){
-            printf("Found File \n");
             return i;
         }
     }
     return -1;
 }
+
 int createFile(const char *name){
     FILE *fp = fopen("virtualDisk.bin", "rb+");
+    if (fp == NULL) {
+        printf("Error opening virtual disk in createFile.\n");
+        return -1;
+    }
 
     // 0. First get super block data
     SuperBlock sb;
@@ -39,7 +43,7 @@ int createFile(const char *name){
     //1. Find if duplicate fileName exists
     fseek(fp, BLOCK_SIZE, SEEK_SET);
 
-    printf("Checking For Duplicate File \n");
+    // printf("Checking For Duplicate File \n");
     if (findFile(name, fp) != -1){
         printf("Duplicate file found. Please Try Again \n");
         fclose(fp);
@@ -59,7 +63,7 @@ int createFile(const char *name){
             return -1;
         };
         if (!temp.isUsed){
-            printf("Found First Valid INode to create file \n");
+            //  printf("Found First Valid INode to create file \n");
             iNodeLoc = i;
             break;
         }
@@ -72,6 +76,7 @@ int createFile(const char *name){
 
     //4. Fill in props of INode
     strncpy(temp.name, name, 31);
+    temp.name[31] = '\0';
     temp.isUsed = 1;
     temp.size = 0;
 
@@ -89,4 +94,102 @@ int createFile(const char *name){
     printf("Successfully added file to disk \n");
     fclose(fp);
     return 1;
+}
+
+void searchFile(const char *name){
+    FILE *fp = fopen("virtualDisk.bin", "rb");
+    if (fp == NULL){
+        printf("Error opening virtual disk in searchFile.\n");
+        return;
+    }
+
+    int inodeIndex = findFile(name, fp);
+
+    printf("Searching for file: %s\n", name);
+    if (inodeIndex == -1){
+        printf("File not found.\n");
+        fclose(fp);
+        return;
+    }
+    printf("File found at inode table index: %d\n", inodeIndex);
+
+    INode in;
+    if (fseek(fp, BLOCK_SIZE + inodeIndex * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fread(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error reading inode.\n");
+        fclose(fp);
+        return;
+    }
+
+    printf("Size: %d bytes\n", in.size);
+    printf("File contents:\n");
+    if (in.size <= 0) {
+        printf("(empty)\n");
+    } else {
+        int blk = in.dataBlocksUsed[0];
+        if (blk == 0) {
+            printf("(no data block)\n");
+        } else {
+            int n = in.size > BLOCK_SIZE ? BLOCK_SIZE : in.size;
+            unsigned char buf[BLOCK_SIZE];
+            if (fseek(fp, (long)blk * BLOCK_SIZE, SEEK_SET) != 0 ||
+                fread(buf, 1, (size_t)n, fp) != (size_t)n) {
+                printf("(read error)\n");
+            } else {
+                fwrite(buf, 1, (size_t)n, stdout);
+                printf("\n");
+            }
+        }
+    }
+
+    fclose(fp);
+}
+
+int writeToFile(const char *name, const char *data, size_t len) {
+    FILE *fp = fopen("virtualDisk.bin", "rb+");
+    if (fp == NULL) {
+        printf("Error opening virtual disk\n");
+        return -1;
+    }
+
+    int idx = findFile(name, fp);
+    if (idx < 0) {
+        printf("File not found\n");
+        fclose(fp);
+        return -1;
+    }
+
+    INode in;
+    if (fseek(fp, BLOCK_SIZE + idx * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fread(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error reading inode\n");
+        fclose(fp);
+        return -1;
+    }
+    
+    size_t n = len;
+    if (n > (size_t)BLOCK_SIZE) {
+        printf("Only first %d bytes are stored\n", BLOCK_SIZE);
+        n = (size_t)BLOCK_SIZE;
+    }
+
+    int block = in.dataBlocksUsed[0];
+    long off = (long)block * BLOCK_SIZE;
+    if (fseek(fp, off, SEEK_SET) != 0 || fwrite(data, 1, n, fp) != n) {
+        printf("Error writing file data\n");
+        fclose(fp);
+        return -1;
+    }
+
+    in.size = (int)n;
+    if (fseek(fp, BLOCK_SIZE + idx * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fwrite(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error saving inode\n");
+        fclose(fp);
+        return -1;
+    }
+
+    printf("Wrote %zu byte(s) to \"%s\"\n", n, name);
+    fclose(fp);
+    return 0;
 }

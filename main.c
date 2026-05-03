@@ -8,13 +8,12 @@
 
 FILE *filePointer;
 
-int initInodes(FILE *filePointer){
+int initInodes(FILE *filePointer) {
     INode emptyINode;
-    memset(&emptyINode, 0, sizeof(emptyINode));
-    // we add all NUM_INODES to our virtual memory
-    for (int i = 0; i < NUM_INODES; i++){
+    memset(&emptyINode, 0, sizeof emptyINode);
+    for (int i = 0; i < NUM_INODES; i++) {
         size_t elementsWritten = fwrite(&emptyINode, sizeof(emptyINode), 1, filePointer);
-        if (elementsWritten != 1){
+        if (elementsWritten != 1) {
             printf("Error, could only write %zu elements in InitInodes \n", elementsWritten);
             return -1;
         }
@@ -23,10 +22,9 @@ int initInodes(FILE *filePointer){
 }
 
 //This method will take care of init our storage system before user can do anything
-int initSuperBlock(){
-    // Create our hard disk to store all of our files
+int initSuperBlock() {
     filePointer = fopen("virtualDisk.bin", "wb");
-    if (filePointer == NULL){
+    if (filePointer == NULL) {
         printf("Failed to create virtual disk");
         return -1;
     }
@@ -44,12 +42,12 @@ int initSuperBlock(){
     sb.dataBlockStart = totalINodeBlocksUsed + 1;
     sb.nextFreeDataBlock = sb.dataBlockStart;
 
-    if (fseek(filePointer, 0, SEEK_SET) != 0){
+    if (fseek(filePointer, 0, SEEK_SET) != 0) {
         printf("Error with moveing to start of memory");
         fclose(filePointer);
     };
     size_t elementsWritten = fwrite(&sb, sizeof(sb), 1, filePointer);
-    if (elementsWritten != 1){
+    if (elementsWritten != 1) {
         printf("Error, could only write %zu elements in initSuperBlock\n", elementsWritten);
         fclose(filePointer);
         return -1;
@@ -66,16 +64,27 @@ int initSuperBlock(){
 }
 
 
-void promptUser(char title[]){
+void promptUser(char title[]) {
     printf("%s\n\n", title);
     printf("> Enter file name: ");
 }
 
+void printLine() {
+    printf("\n\n-------------------------------------\n");
+}
 
-int main(){
+
+static void flushLine(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+    }
+}
+
+int main() {
     int choice;
     char fileName[100];
-    
+    char writeBuf[512];
+
     if (initSuperBlock() == -1) {
         return 1;
     }
@@ -83,8 +92,9 @@ int main(){
     printf("\n=====================================\n");
     printf("      C FILE SYSTEM INTERFACE\n");
     printf("=====================================\n\n");
-    
-    while(1){
+
+    while (1) {
+        printf("\n");
         printf("   1. Create a File \n");
         printf("   2. Search for a File \n");
         printf("   3. Open a File \n");
@@ -100,35 +110,38 @@ int main(){
             continue;
         }
 
-        printf("\n-------------------------------------\n");
+        printLine();
 
         switch (choice) {
             case 1:
                 promptUser("Create File");
-                char fileName[32];
                 scanf("%31s", fileName);
                 createFile(fileName);
-                printf("\n");
-                printf("\n-------------------------------------\n");
+                printLine();
 
                 break;
-                //TODO: Prob call a function to do this
 
             case 2:
                 promptUser("Search File");
-                printf("\n");
-                printf("\n-------------------------------------\n");
+                scanf("%31s", fileName);
+                searchFile(fileName);
+                printLine();
 
                 break;
-                //TODO: Prob call a function to do this 
 
             case 3:
                 promptUser("Open File");
-                printf("\n");
-                printf("\n-------------------------------------\n");
+                scanf("%31s", fileName);
+                flushLine();
+                printf("> Text to store (max %d chars, one line):\n> ", BLOCK_SIZE);
+                if (fgets(writeBuf, sizeof writeBuf, stdin) == NULL) {
+                    writeBuf[0] = '\0';
+                }
+                writeToFile(fileName, writeBuf, strlen(writeBuf));
+                printLine();
 
                 break;
-                //TODO: Prob call a function to do this 
+                //TODO: Prob call a function to do this
                 //This method will most likely also call the 'close file' method. Since after the user opens the file and makes some changes, they would need to close it before moving on
             case 4:
                 printf("Exiting...\n\n\n");
