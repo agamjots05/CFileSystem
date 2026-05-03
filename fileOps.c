@@ -17,7 +17,6 @@ int findFile(const char *name, FILE *fp) {
             return -1;
         };
         if (temp.isUsed && (strcmp(name, temp.name) == 0)){
-            printf("Found File \n");
             return i;
         }
     }
@@ -39,7 +38,7 @@ int createFile(const char *name){
     //1. Find if duplicate fileName exists
     fseek(fp, BLOCK_SIZE, SEEK_SET);
 
-    printf("Checking For Duplicate File \n");
+    // printf("Checking For Duplicate File \n");
     if (findFile(name, fp) != -1){
         printf("Duplicate file found. Please Try Again \n");
         fclose(fp);
@@ -59,7 +58,7 @@ int createFile(const char *name){
             return -1;
         };
         if (!temp.isUsed){
-            printf("Found First Valid INode to create file \n");
+            //  printf("Found First Valid INode to create file \n");
             iNodeLoc = i;
             break;
         }
@@ -89,4 +88,23 @@ int createFile(const char *name){
     printf("Successfully added file to disk \n");
     fclose(fp);
     return 1;
+}
+
+void searchFile(const char *name){
+    FILE *fp = fopen("virtualDisk.bin", "rb");
+    if (fp == NULL){
+        printf("Error opening virtual disk in searchFile.\n");
+        return;
+    }
+
+    int inodeIndex = findFile(name, fp);
+
+    printf("Searching for file: %s\n", name);
+    if (inodeIndex == -1){
+        printf("File not found.\n");
+        fclose(fp);
+        return;
+    }
+    printf("File found at inode table index: %d\n", inodeIndex);
+    fclose(fp);
 }

@@ -71,6 +71,11 @@ void promptUser(char title[]){
     printf("> Enter file name: ");
 }
 
+void printLine(){
+    printf("\n");
+    printf("\n-------------------------------------\n");
+}
+
 
 int main(){
     int choice;
@@ -85,6 +90,7 @@ int main(){
     printf("=====================================\n\n");
     
     while(1){
+        printf("\n");
         printf("   1. Create a File \n");
         printf("   2. Search for a File \n");
         printf("   3. Open a File \n");
@@ -100,32 +106,28 @@ int main(){
             continue;
         }
 
-        printf("\n-------------------------------------\n");
+        printLine();
 
         switch (choice) {
             case 1:
                 promptUser("Create File");
-                char fileName[32];
                 scanf("%31s", fileName);
                 createFile(fileName);
-                printf("\n");
-                printf("\n-------------------------------------\n");
+                printLine();
 
                 break;
-                //TODO: Prob call a function to do this
 
             case 2:
                 promptUser("Search File");
-                printf("\n");
-                printf("\n-------------------------------------\n");
-
+                scanf("%31s", fileName);
+                searchFile(fileName);
+                printLine();
+                
                 break;
-                //TODO: Prob call a function to do this 
 
             case 3:
                 promptUser("Open File");
-                printf("\n");
-                printf("\n-------------------------------------\n");
+                printLine();
 
                 break;
                 //TODO: Prob call a function to do this 
