@@ -22,6 +22,7 @@ int findFile(const char *name, FILE *fp) {
     }
     return -1;
 }
+
 int createFile(const char *name){
     FILE *fp = fopen("virtualDisk.bin", "rb+");
     if (fp == NULL) {
@@ -111,6 +112,36 @@ void searchFile(const char *name){
         return;
     }
     printf("File found at inode table index: %d\n", inodeIndex);
+
+    INode in;
+    if (fseek(fp, BLOCK_SIZE + inodeIndex * (long)sizeof(INode), SEEK_SET) != 0 ||
+        fread(&in, sizeof(in), 1, fp) != 1) {
+        printf("Error reading inode.\n");
+        fclose(fp);
+        return;
+    }
+
+    printf("Size: %d bytes\n", in.size);
+    printf("File contents:\n");
+    if (in.size <= 0) {
+        printf("(empty)\n");
+    } else {
+        int blk = in.dataBlocksUsed[0];
+        if (blk == 0) {
+            printf("(no data block)\n");
+        } else {
+            int n = in.size > BLOCK_SIZE ? BLOCK_SIZE : in.size;
+            unsigned char buf[BLOCK_SIZE];
+            if (fseek(fp, (long)blk * BLOCK_SIZE, SEEK_SET) != 0 ||
+                fread(buf, 1, (size_t)n, fp) != (size_t)n) {
+                printf("(read error)\n");
+            } else {
+                fwrite(buf, 1, (size_t)n, stdout);
+                printf("\n");
+            }
+        }
+    }
+
     fclose(fp);
 }
 
@@ -135,20 +166,14 @@ int writeToFile(const char *name, const char *data, size_t len) {
         fclose(fp);
         return -1;
     }
-
-    int block = in.dataBlocksUsed[0];
-    if (block == 0) {
-        printf("File has no data block assigned\n");
-        fclose(fp);
-        return -1;
-    }
-
+    
     size_t n = len;
     if (n > (size_t)BLOCK_SIZE) {
         printf("Only first %d bytes are stored\n", BLOCK_SIZE);
         n = (size_t)BLOCK_SIZE;
     }
 
+    int block = in.dataBlocksUsed[0];
     long off = (long)block * BLOCK_SIZE;
     if (fseek(fp, off, SEEK_SET) != 0 || fwrite(data, 1, n, fp) != n) {
         printf("Error writing file data\n");

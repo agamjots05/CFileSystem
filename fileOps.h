@@ -3,6 +3,7 @@
 
 #include "types.h"
 
+#include <stddef.h>
 #include <stdio.h>
 
 int findFile(const char *name, FILE *fp);
