@@ -1,12 +1,55 @@
 #include <stdio.h>
 #include "types.h"
+#include <string.h>
 #include <unistd.h>
 
 #define DISK_SIZE (10 * 1024 * 1024) // This is 10mb of hard disk we can write data into
-#define BLOCK_SIZE 512 // we can have each block start with 512mb
+#define BLOCK_SIZE 512 // bytes per block
 #define NUM_INODES 128
 
 FILE *filePointer;
+
+/*
+ * Disk layout
+ *   block 0  -> superblock at the start of the file
+ *   blocks 1 --> inode region
+ */
+static long inode_byte_offset(int index) {
+    return (long)BLOCK_SIZE + (long)index * (long)sizeof(INode);
+}
+
+/* Load inode number `index` from the open disk file. */
+int read_inode(FILE *fp, int index, INode *out) {
+    if (index < 0 || index >= NUM_INODES || out == NULL)
+        return -1;
+    if (fseek(fp, inode_byte_offset(index), SEEK_SET) != 0)
+        return -1;
+    if (fread(out, sizeof(INode), 1, fp) != 1)
+        return -1;
+    return 0;
+}
+
+/* Save inode number `index` to the disk file. */
+int write_inode(FILE *fp, int index, const INode *in) {
+    if (index < 0 || index >= NUM_INODES || in == NULL)
+        return -1;
+    if (fseek(fp, inode_byte_offset(index), SEEK_SET) != 0)
+        return -1;
+    if (fwrite(in, sizeof(INode), 1, fp) != 1)
+        return -1;
+    return 0;
+}
+
+/* Call once when formatting: every inode slot is unused (all zeros). */
+static int write_empty_inode_table(FILE *fp) {
+    INode empty;
+    memset(&empty, 0, sizeof(empty));
+    for (int i = 0; i < NUM_INODES; i++) {
+        if (write_inode(fp, i, &empty) != 0)
+            return -1;
+    }
+    return 0;
+}
 
 //This method will take care of init our storage system before user can do anything
 int initData(){
@@ -36,6 +79,13 @@ int initData(){
     size_t elementsWritten = fwrite(&sb, sizeof(sb), 1, filePointer);
     if (elementsWritten != 1){
         printf("Error, could only write %zu elements \n", elementsWritten);
+        fclose(filePointer);
+        return -1;
+    }
+
+    /* Reserve on-disk inode slots so create/search can tell free (isUsed==0) from used. */
+    if (write_empty_inode_table(filePointer) != 0) {
+        printf("Error writing inode table\n");
         fclose(filePointer);
         return -1;
     }
