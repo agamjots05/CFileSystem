@@ -1,15 +1,29 @@
-#include <stdio.h>
 #include "types.h"
-#include <unistd.h>
+#include "fileOps.h"
 
-#define DISK_SIZE (10 * 1024 * 1024) // This is 10mb of hard disk we can write data into
-#define BLOCK_SIZE 512 // we can have each block start with 512mb
-#define NUM_INODES 128
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+
 
 FILE *filePointer;
 
+int initInodes(FILE *filePointer){
+    INode emptyINode;
+    memset(&emptyINode, 0, sizeof(emptyINode));
+    // we add all NUM_INODES to our virtual memory
+    for (int i = 0; i < NUM_INODES; i++){
+        size_t elementsWritten = fwrite(&emptyINode, sizeof(emptyINode), 1, filePointer);
+        if (elementsWritten != 1){
+            printf("Error, could only write %zu elements in InitInodes \n", elementsWritten);
+            return -1;
+        }
+    }
+    return 1;
+}
+
 //This method will take care of init our storage system before user can do anything
-int initData(){
+int initSuperBlock(){
     // Create our hard disk to store all of our files
     filePointer = fopen("virtualDisk.bin", "wb");
     if (filePointer == NULL){
@@ -28,6 +42,7 @@ int initData(){
     int totalINodeBytes = sb.iNodeCount * (int)sizeof(INode);
     int totalINodeBlocksUsed = (totalINodeBytes + BLOCK_SIZE - 1) / BLOCK_SIZE;
     sb.dataBlockStart = totalINodeBlocksUsed + 1;
+    sb.nextFreeDataBlock = sb.dataBlockStart;
 
     if (fseek(filePointer, 0, SEEK_SET) != 0){
         printf("Error with moveing to start of memory");
@@ -35,26 +50,33 @@ int initData(){
     };
     size_t elementsWritten = fwrite(&sb, sizeof(sb), 1, filePointer);
     if (elementsWritten != 1){
-        printf("Error, could only write %zu elements \n", elementsWritten);
+        printf("Error, could only write %zu elements in initSuperBlock\n", elementsWritten);
         fclose(filePointer);
         return -1;
     }
+    // Even though the superblock takes up 12 bytes, we're going to move to byte 512 to start the Inodes for easier math in the future
+    fseek(filePointer, BLOCK_SIZE, SEEK_SET);
+
+    initInodes(filePointer);
 
     fclose(filePointer);
 
+
     return 1;
 }
+
 
 void promptUser(char title[]){
     printf("%s\n\n", title);
     printf("> Enter file name: ");
 }
 
+
 int main(){
     int choice;
     char fileName[100];
     
-    if (initData() == -1) {
+    if (initSuperBlock() == -1) {
         return 1;
     }
 
@@ -83,11 +105,14 @@ int main(){
         switch (choice) {
             case 1:
                 promptUser("Create File");
+                char fileName[32];
+                scanf("%31s", fileName);
+                createFile(fileName);
                 printf("\n");
                 printf("\n-------------------------------------\n");
 
                 break;
-                //TODO: Prob call a function to do this 
+                //TODO: Prob call a function to do this
 
             case 2:
                 promptUser("Search File");
