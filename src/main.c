@@ -38,9 +38,10 @@ int main() {
     char initChoice[INPUT_SIZE];
     char fileName[FILE_NAME_LEN];
     char writeBuf[WRITE_BUF_LEN];
-    char choice[INPUT_SIZE];
+    int choice;
+    
 
-    if fileExists(diskName){
+    if (fileExists(diskName)){
         printf("An existing file system was found \n");
         printf("1. Continue Where You Left Off?\n");
         printf("2. Reset (Erase hardisk and start from scratch\n)");

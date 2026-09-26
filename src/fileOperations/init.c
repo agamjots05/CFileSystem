@@ -13,7 +13,6 @@
     4. Call saveFileSystem using our fileSystem pointer
 
 
-
 */
 int initFileSystem(FileSystem *fs, const char diskName){
     fs->diskFile = fopen(diskName, "wb");
@@ -56,9 +55,14 @@ void initSuperBlock(SuperBlock *sb){
     int totalINodeBlocksUsed = (totalINodeBytes + BLOCK_SIZE - 1) / BLOCK_SIZE;
     sb->dataBlockStart = totalINodeBlocksUsed + 1;
 
-    //Index 0 is occupied by root Inode 
-    sb->topInodeStack = 0;
+    sb->topInodeStack = -1;
+    for (int i=0; i < NUM_INODES; i++){
+        sb->freeInodeStack[++sb->topInodeStack] = i;
+    }
     sb->topDataBlockStack = -1;
+    for (int i=0; i < MAX_NUM_DATA_BLOCKS; i++){
+        sb->freeDataBlockStack[++sb->topDataBlockStack] = i;
+    }
 }
 
 void initRootDirectory(FileSystem *fs){

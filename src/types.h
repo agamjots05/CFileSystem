@@ -8,7 +8,7 @@
 #define MAX_NUM_DATA_BLOCKS (NUM_INODES * MAX_BLOCKS_PER_INODE)
 
 // Each iNode will be one of the 2 types either a directory or a file.
-typedef enum { FILE_TYPE, DIR_TYPE } FileType;
+typedef enum { UNUSED, FILE_TYPE, DIR_TYPE } FileType;
 
 
 typedef struct {

@@ -4,8 +4,6 @@
 
 // Saves our current FileSystem struct into our virtualDisk binary
 int saveFileSystem(FileSystem *fs){
-
-
     return 0;
 }
 
