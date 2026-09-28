@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include "types.h"
 
+#include "filePersist.h"
+
 /*
     We want to util the FileSystem struct where we'll be changing this struct
     save it when we want to write to disk.
@@ -66,18 +68,34 @@ void initSuperBlock(SuperBlock *sb){
 }
 
 void initRootDirectory(FileSystem *fs){
+    INode *iNodeList = fs->inodeList;
+    INode *rootNode = &iNodeList[0];
 
+    rootNode->isUsed = 1;
+    rootNode->type = DIR_TYPE;
+    rootNode->size = 0;
+
+    int freeDb = getNextFreeDataBlock(fs->sb);
+    rootNode->dataBlocksUsed[0] = freeDb;
+
+
+    SuperBlock *sb = fs->sb;
+    long offSet = _getOffset(sb, freeDb);
+    fseek(fs->diskFile, offSet, SEEK_SET);
+
+    //TODO: Populate data block with dirEntries.
 }
 
 void initInodes(INode *iNodeList) {
-    for (int i=0;i< sizeof(iNodeList); i++){
+    for (int i=0; i < NUM_INODES; i++){
         INode empty;
         empty.type = UNUSED;
         empty.isUsed = 0;
         empty.size = 0;
-        for (int j=0; j < sizeof(empty.dataBlocksUsed); j++){
+        for (int j=0; j < MAX_BLOCKS_PER_INODE; j++){
             empty.dataBlocksUsed[j] = -1;
         }
         iNodeList[i] = empty;
     }
 }
+
