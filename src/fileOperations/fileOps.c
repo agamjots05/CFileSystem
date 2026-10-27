@@ -191,5 +191,5 @@ int writeToFile(const char *name, const char *data, size_t len) {
 
     printf("Wrote %zu byte(s) to \"%s\"\n", n, name);
     fclose(fp);
-    return 0;
+    return 1;
 }

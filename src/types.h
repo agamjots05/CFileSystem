@@ -7,25 +7,21 @@
 #define BLOCK_SIZE 512 // we can have each block start with 512 bytes
 #define NUM_INODES 128
 #define MAX_BLOCKS_PER_INODE 10
+#define TOTAL_BLOCKS (DISK_SIZE / BLOCK_SIZE)
+#define BITMAP_BYTES (TOTAL_BLOCKS / 8)
+#define BITMAP_BLOCKS ((BITMAP_BYTES + BLOCK_SIZE - 1) / BLOCK_SIZE)
 #define MAX_NUM_DATA_BLOCKS (NUM_INODES * MAX_BLOCKS_PER_INODE)
 
 // Each iNode will be one of the 2 types either a directory or a file.
 typedef enum { UNUSED, FILE_TYPE, DIR_TYPE } FileType;
 
-
 typedef struct {
-    SuperBlock sb;
-    INode inodeList[NUM_INODES];
-    FILE *diskFile;
-}FileSystem;
-
-// A directory is a key value pair where the name will correspond to an iNode.
-typedef struct {
-    char name[32];
-    int iNode;
-}DirEntry;
-
-
+    FileType type; 
+    // Unused = 0 | Used = 1
+    int isUsed;
+    int size;
+    int dataBlocksUsed[MAX_BLOCKS_PER_INODE];
+} INode;
 
 typedef struct {
     int totalBlocks;
@@ -45,12 +41,20 @@ typedef struct {
 
 
 typedef struct {
-    FileType type; 
-    // Unused = 0 | Used = 1
-    int isUsed;
-    int size;
-    int dataBlocksUsed[MAX_BLOCKS_PER_INODE];
+    SuperBlock sb;
+    INode inodeList[NUM_INODES];
+    FILE *diskFile;
+    int cwdINode;
+}FileSystem;
 
-} INode;
+// A directory is a key value pair where the name will correspond to an iNode.
+typedef struct {
+    char name[32];
+    int iNode;
+}DirEntry;
+
+
+
+
 
 #endif

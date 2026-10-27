@@ -3,44 +3,39 @@
 #include <stdio.h>
 #include "types.h"
 
-#include "filePersist.h"
+#include "filePersistance/filePersist.h"
+#include "fileOperations/opsHelper/opsHelper.h"
 
-/*
-    We want to util the FileSystem struct where we'll be changing this struct
-    save it when we want to write to disk.
-
-    1. Open file in wb mode
-    2. Call initSuper block and have it return our superblock
-    3. Call initInodes to return arr of Inodes
-    4. Call saveFileSystem using our fileSystem pointer
-
-
-*/
-int initFileSystem(FileSystem *fs, const char diskName){
+int initFileSystem(FileSystem *fs, const char *diskName){
     fs->diskFile = fopen(diskName, "wb");
     if (fs->diskFile == NULL){
         printf("Error creating file \n");
-        return 0;
+        return -1;
     }
-    ftruncate(fileno(fs->diskFile), DISK_SIZE);
+    if (ftruncate(fileno(fs->diskFile), DISK_SIZE) != 0) {
+        fclose(fs->diskFile);
+        fs->diskFile = NULL;
+        return -1;
+    }
 
-    initSuperblock(&fs->sb);
+    initSuperBlock(&fs->sb);
 
-    initInodes(fs->inodeList);
+    if (initInodes(fs, fs->inodeList) == -1){
+        printf("Fatal: Failed to init file system\n");
+        fclose(fs->diskFile);
+        fs->diskFile = NULL;
+        return -1;
+    };
 
-    initRootDirectory(fs);
-
-    saveFileSystem(fs);
-
-
+    if (saveFileSystem(fs) == -1) return -1;
     return 1;
 }
 
 int fileExists(const char *diskName){
     FILE *fp = fopen(diskName, "rb");
     if (fp == NULL){
-        printf("File Doesn't Exist Try Again");
-        return 0;
+        printf("File Doesn't Exist Try Again\n");
+        return -1;
     }
     fclose(fp);
     return 1;
@@ -66,36 +61,38 @@ void initSuperBlock(SuperBlock *sb){
         sb->freeDataBlockStack[++sb->topDataBlockStack] = i;
     }
 }
-
-void initRootDirectory(FileSystem *fs){
-    INode *iNodeList = fs->inodeList;
-    INode *rootNode = &iNodeList[0];
-
-    rootNode->isUsed = 1;
+int initRootDirectory(FileSystem *fs, INode *rootNode){
+    int db = _initDirDataBlock(fs);
+    if (db == -1){
+        printf("Fatal: Failed to Init Inodes");
+        return -1;
+    }
     rootNode->type = DIR_TYPE;
+    rootNode->isUsed = 1;
     rootNode->size = 0;
-
-    int freeDb = getNextFreeDataBlock(fs->sb);
-    rootNode->dataBlocksUsed[0] = freeDb;
-
-
-    SuperBlock *sb = fs->sb;
-    long offSet = _getOffset(sb, freeDb);
-    fseek(fs->diskFile, offSet, SEEK_SET);
-
-    //TODO: Populate data block with dirEntries.
+    for (int i = 0; i < MAX_BLOCKS_PER_INODE; i++) rootNode->dataBlocksUsed[i] = -1;
+    rootNode->dataBlocksUsed[0] = db;
+    return 1;
 }
 
-void initInodes(INode *iNodeList) {
+int initInodes(FileSystem *fs, INode *iNodeList) {
     for (int i=0; i < NUM_INODES; i++){
-        INode empty;
-        empty.type = UNUSED;
-        empty.isUsed = 0;
-        empty.size = 0;
-        for (int j=0; j < MAX_BLOCKS_PER_INODE; j++){
-            empty.dataBlocksUsed[j] = -1;
+        INode empty = {0};
+        if (i == 0){
+            if(initRootDirectory(fs, &empty) == -1){
+                printf("Fatal: Failure to Init Inodes \n");
+                return -1;
+            }
+        }
+        else{
+            empty.type = UNUSED;
+            empty.isUsed = 0;
+            empty.size = 0;
+            for (int j=0; j < MAX_BLOCKS_PER_INODE; j++){
+                empty.dataBlocksUsed[j] = -1;
+            }
         }
         iNodeList[i] = empty;
     }
+    return 1;
 }
-

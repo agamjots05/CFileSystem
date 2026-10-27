@@ -1,10 +1,29 @@
 #include "types.h"
 #include <stdio.h>
 
+int loadFileSystem(FileSystem *fs){
+    fs->diskFile = fopen("virtualDisk.bin", "rb+");
+    if (fs->diskFile == NULL) return -1;
+    fseek(fs->diskFile, 0, SEEK_SET);
+    if (fread(&fs->sb, sizeof(SuperBlock), 1, fs->diskFile) != 1) return -1;
 
-// Saves our current FileSystem struct into our virtualDisk binary
+    // Adding an offset of size BLOCK_SIZE since first INode lives in Block 1 
+    // Block 0 is being occupied by SuperBlock.
+    fseek(fs->diskFile,BLOCK_SIZE, SEEK_SET);
+    if (fread(fs->inodeList, sizeof(INode), NUM_INODES, fs->diskFile) != NUM_INODES) return -1;
+
+    return 1;
+}
+
 int saveFileSystem(FileSystem *fs){
-    return 0;
+    if (fs == NULL || fs->diskFile == NULL || fseek(fs->diskFile, 0, SEEK_SET) != 0) return -1;
+
+    if (fwrite(&fs->sb, sizeof(SuperBlock),1, fs->diskFile) != 1) return -1;
+
+    if (fseek(fs->diskFile, BLOCK_SIZE, SEEK_SET) != 0 ||
+        fwrite(fs->inodeList, sizeof(INode), NUM_INODES, fs->diskFile) != NUM_INODES) return -1;
+
+    return fflush(fs->diskFile) == 0 ? 1 : -1;
 }
 
 int getNextFreeDataBlock(SuperBlock *sb){
@@ -31,5 +50,5 @@ int getNextFreeINodeBlock(SuperBlock *sb){
 }
 
 long _getOffset(SuperBlock *sb, int freeDb){
-    return (long)BLOCK_SIZE * (sb->dataBlockStart * freeDb);
+    return (long)BLOCK_SIZE * (sb->dataBlockStart + freeDb);
 }
